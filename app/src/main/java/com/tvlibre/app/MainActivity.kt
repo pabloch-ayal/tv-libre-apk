@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.OptIn
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,11 +29,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.*
+import okhttp3.OkHttpClient
 import org.json.JSONArray
 import java.net.URL
+import java.util.concurrent.TimeUnit
 
 data class MediaEntry(val title: String, val category: String, val type: String, val badge: String, val streamUrl: String)
 
@@ -49,6 +57,26 @@ val AvatarGradients = listOf(
     listOf(Color(0xFF8E2DE2), Color(0xFF4A00E0))
 )
 
+fun parseM3uContent(raw: String, originTag: String): List<MediaEntry> {
+    val result = mutableListOf<MediaEntry>()
+    val lines = raw.lines()
+    var currentTitle = ""
+    var currentGroup = originTag
+    for (line in lines) {
+        val trimmed = line.trim()
+        if (trimmed.startsWith("#EXTINF:")) {
+            val groupMatch = Regex("""group-title="([^"]*)"""").find(trimmed)
+            val grp = groupMatch?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }
+            currentGroup = if (grp != null) "$originTag • $grp" else originTag
+            currentTitle = trimmed.substringAfterLast(",").trim()
+        } else if (trimmed.startsWith("http") && currentTitle.isNotEmpty()) {
+            result.add(MediaEntry(currentTitle, currentGroup, "TV", "M3U", trimmed))
+            currentTitle = ""
+        }
+    }
+    return result
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,6 +89,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 fun TvLibrePlusApp() {
     val context = LocalContext.current
@@ -70,45 +99,108 @@ fun TvLibrePlusApp() {
     var selectedSub by remember { mutableStateOf("Todos") }
     var searchQuery by remember { mutableStateOf("") }
     var statusMsg by remember { mutableStateOf("Listo") }
-    val remoteUrl = "https://raw.githubusercontent.com/pabloch-ayal/tv-libre-apk/main/catalogo.json"
+    var playerStatus by remember { mutableStateOf("Cargando señal...") }
+
+    val remoteJsonUrl = "https://raw.githubusercontent.com/pabloch-ayal/tv-libre-apk/main/catalogo.json"
+    val peruM3uUrl = "https://iptv-org.github.io/iptv/countries/pe.m3u"
+    val spanishM3uUrl = "https://iptv-org.github.io/iptv/languages/spa.m3u"
 
     val defaultList = remember {
         listOf(
-            MediaEntry("TV Perú", "Perú • Nacional", "TV", "HD", "https://cdn.stream.irtp.gob.pe/tvperu/smil:tvperu.smil/playlist.m3u8"),
-            MediaEntry("TV Perú Noticias", "Perú • Noticias", "TV", "24H", "https://cdn.stream.irtp.gob.pe/tvperunoticias/smil:tvperunoticias.smil/playlist.m3u8"),
+            MediaEntry("TV Perú (7.1 HD)", "Perú • Nacional", "TV", "HD", "https://cdn.stream.irtp.gob.pe/tvperu/smil:tvperu.smil/playlist.m3u8"),
             MediaEntry("DW Español", "Internacional • Noticias", "TV", "HD", "https://dwamdstream104.akamaized.net/hls/live/2015530/dwstream104/index.m3u8"),
-            MediaEntry("La Noche de los Muertos Vivientes (1968)", "Cine Clásico • Terror", "VOD", "PELÍCULA", "https://archive.org/download/night_of_the_living_dead/night_of_the_living_dead_512kb.mp4")
+            MediaEntry("La Noche de los Muertos Vivientes (1968)", "Cine • Terror", "VOD", "PELÍCULA", "https://archive.org/download/night_of_the_living_dead/night_of_the_living_dead_512kb.mp4")
         )
     }
     var catalog by remember { mutableStateOf(defaultList) }
     var currentMedia by remember { mutableStateOf(defaultList.first()) }
 
-    suspend fun loadRemote() {
-        statusMsg = "Sincronizando..."
+    suspend fun loadAllSources(includeLatam: Boolean = false) {
+        statusMsg = "Sincronizando señales..."
         withContext(Dispatchers.IO) {
+            val combined = mutableListOf<MediaEntry>()
             try {
-                val arr = JSONArray(URL(remoteUrl).readText())
-                val loaded = (0 until arr.length()).map { i ->
+                val arr = JSONArray(URL(remoteJsonUrl).readText())
+                for (i in 0 until arr.length()) {
                     val o = arr.getJSONObject(i)
-                    MediaEntry(o.getString("title"), o.optString("category", "General"), o.optString("type", "TV"), o.optString("badge", "HD"), o.getString("streamUrl"))
+                    combined.add(MediaEntry(o.getString("title"), o.optString("category", "General"), o.optString("type", "TV"), o.optString("badge", "HD"), o.getString("streamUrl")))
                 }
-                if (loaded.isNotEmpty()) withContext(Dispatchers.Main) { catalog = loaded; statusMsg = "${loaded.size} señales" }
-            } catch (_: Exception) { withContext(Dispatchers.Main) { statusMsg = "Modo local" } }
+            } catch (_: Exception) { }
+
+            try {
+                val peRaw = URL(peruM3uUrl).readText()
+                combined.addAll(parseM3uContent(peRaw, "Perú M3U"))
+            } catch (_: Exception) { }
+
+            if (includeLatam) {
+                try {
+                    val spaRaw = URL(spanishM3uUrl).readText()
+                    combined.addAll(parseM3uContent(spaRaw, "Latinoamérica").take(150))
+                } catch (_: Exception) { }
+            }
+
+            val distinctList = combined.distinctBy { it.streamUrl }
+            if (distinctList.isNotEmpty()) {
+                withContext(Dispatchers.Main) {
+                    catalog = distinctList
+                    statusMsg = "${distinctList.size} canales y películas"
+                }
+            } else {
+                withContext(Dispatchers.Main) { statusMsg = "Modo local" }
+            }
         }
     }
 
-    LaunchedEffect(Unit) { loadRemote() }
-    val exoPlayer = remember { ExoPlayer.Builder(context).build().apply { playWhenReady = true } }
-    LaunchedEffect(currentMedia) { exoPlayer.setMediaItem(MediaItem.fromUri(currentMedia.streamUrl)); exoPlayer.prepare(); exoPlayer.playWhenReady = true }
+    LaunchedEffect(Unit) { loadAllSources(includeLatam = false) }
+
+    val exoPlayer = remember {
+        val okHttpClient = OkHttpClient.Builder()
+            .followRedirects(true)
+            .followSslRedirects(true)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
+
+        val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
+            .setUserAgent("Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+            .build()
+            .apply {
+                playWhenReady = true
+                addListener(object : Player.Listener {
+                    override fun onPlaybackStateChanged(state: Int) {
+                        playerStatus = when (state) {
+                            Player.STATE_BUFFERING -> "Conectando transmisión..."
+                            Player.STATE_READY -> "Reproduciendo"
+                            Player.STATE_ENDED -> "Finalizado"
+                            else -> ""
+                        }
+                    }
+                    override fun onPlayerError(error: PlaybackException) {
+                        playerStatus = "Señal caída o bloqueada (${error.errorCodeName})"
+                    }
+                })
+            }
+    }
+
+    LaunchedEffect(currentMedia) {
+        playerStatus = "Conectando transmisión..."
+        exoPlayer.setMediaItem(MediaItem.fromUri(currentMedia.streamUrl))
+        exoPlayer.prepare()
+        exoPlayer.playWhenReady = true
+    }
+
     DisposableEffect(Unit) { onDispose { exoPlayer.release() } }
 
-    val subs = if (selectedTab == "TV") listOf("Todos", "Perú", "Noticias", "Cultura", "Ciencia") else listOf("Todos", "Terror", "Comedia")
+    val subs = if (selectedTab == "TV") listOf("Todos", "Perú", "Latinoamérica", "Noticias", "Deportes", "Música", "Cultura") else listOf("Todos", "Terror", "Comedia", "Acción", "Ciencia Ficción", "Animación")
     val filtered = catalog.filter { it.type == selectedTab && (selectedSub == "Todos" || it.category.contains(selectedSub, true)) && (it.title.contains(searchQuery, true) || it.category.contains(searchQuery, true)) }
 
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0F172A), BgDeepNavy))).then(if (!isLandscape) Modifier.statusBarsPadding().navigationBarsPadding() else Modifier)) {
         if (!isLandscape) {
             Row(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(Color(0xFF1E3A8A), Color(0xFF6D28D9), Color(0xFFDB2777)))).padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.LiveTv, null, tint = Color.White, modifier = Modifier.size(26.dp))
                     Spacer(Modifier.width(10.dp))
                     Column {
@@ -116,13 +208,23 @@ fun TvLibrePlusApp() {
                         Text(statusMsg, color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
                     }
                 }
-                IconButton(onClick = { scope.launch { loadRemote() } }, modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.2f)).size(34.dp)) {
-                    Icon(Icons.Default.Refresh, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    TextButton(onClick = { scope.launch { loadAllSources(includeLatam = true) } }, colors = ButtonDefaults.textButtonColors(containerColor = Color.White.copy(alpha = 0.2f)), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
+                        Text("+ Latam", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                    IconButton(onClick = { scope.launch { loadAllSources(includeLatam = false) } }, modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.2f)).size(34.dp)) {
+                        Icon(Icons.Default.Refresh, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
                 }
             }
         }
         Box(if (isLandscape) Modifier.fillMaxSize().background(Color.Black) else Modifier.fillMaxWidth().height(225.dp).background(Color.Black)) {
             AndroidView(factory = { ctx -> PlayerView(ctx).apply { player = exoPlayer; useController = true } }, modifier = Modifier.fillMaxSize())
+            if (playerStatus.isNotEmpty() && playerStatus != "Reproduciendo") {
+                Surface(color = Color.Black.copy(alpha = 0.75f), shape = RoundedCornerShape(8.dp), modifier = Modifier.align(Alignment.TopStart).padding(10.dp)) {
+                    Text(playerStatus, color = AccentCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                }
+            }
         }
         if (!isLandscape) {
             Row(Modifier.fillMaxWidth().background(Color(0xFF111827)).padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -145,7 +247,7 @@ fun TvLibrePlusApp() {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 subs.forEach { f -> FilterChip(selected = selectedSub == f, onClick = { selectedSub = f }, label = { Text(f) }) }
             }
-            OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, placeholder = { Text("Buscar canal o película...") }, singleLine = true, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
+            OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, placeholder = { Text("Buscar canal, país o película...") }, singleLine = true, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 itemsIndexed(filtered) { idx, item ->
                     val isPlaying = item == currentMedia
