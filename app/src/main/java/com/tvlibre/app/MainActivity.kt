@@ -204,7 +204,7 @@ fun TvLibrePlusApp() {
                     Icon(Icons.Default.LiveTv, null, tint = Color.White, modifier = Modifier.size(26.dp))
                     Spacer(Modifier.width(10.dp))
                     Column {
-                        Text("TV LIBRE PLUS", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                        Text("TV LIBRE PLUS", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp); Text("Creado por César Ayal", color = Color(0xFF67E8F9), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         Text(statusMsg, color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
                     }
                 }
