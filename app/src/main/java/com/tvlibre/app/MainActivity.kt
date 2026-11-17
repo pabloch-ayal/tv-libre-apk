@@ -38,6 +38,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
 import org.json.JSONArray
 import java.net.URL
 import java.util.concurrent.TimeUnit
@@ -57,7 +58,7 @@ val AvatarGradients = listOf(
     listOf(Color(0xFF8E2DE2), Color(0xFF4A00E0))
 )
 
-fun parseM3uContent(raw: String, originTag: String): List<MediaEntry> {
+fun parseM3uContent(raw: String, originTag: String, badgeTag: String): List<MediaEntry> {
     val result = mutableListOf<MediaEntry>()
     val lines = raw.lines()
     var currentTitle = ""
@@ -70,7 +71,7 @@ fun parseM3uContent(raw: String, originTag: String): List<MediaEntry> {
             currentGroup = if (grp != null) "$originTag • $grp" else originTag
             currentTitle = trimmed.substringAfterLast(",").trim()
         } else if (trimmed.startsWith("http") && currentTitle.isNotEmpty()) {
-            result.add(MediaEntry(currentTitle, currentGroup, "TV", "M3U", trimmed))
+            result.add(MediaEntry(currentTitle, currentGroup, "TV", badgeTag, trimmed))
             currentTitle = ""
         }
     }
@@ -98,12 +99,14 @@ fun TvLibrePlusApp() {
     var selectedTab by remember { mutableStateOf("TV") }
     var selectedSub by remember { mutableStateOf("Todos") }
     var searchQuery by remember { mutableStateOf("") }
-    var statusMsg by remember { mutableStateOf("Listo") }
+    var statusMsg by remember { mutableStateOf("Cargando plataformas...") }
     var playerStatus by remember { mutableStateOf("Cargando señal...") }
 
     val remoteJsonUrl = "https://raw.githubusercontent.com/pabloch-ayal/tv-libre-apk/main/catalogo.json"
     val peruM3uUrl = "https://iptv-org.github.io/iptv/countries/pe.m3u"
-    val spanishM3uUrl = "https://iptv-org.github.io/iptv/languages/spa.m3u"
+    val plutoEsUrl = "https://i.mjh.nz/PlutoTV/es.m3u8"
+    val plexEsUrl = "https://i.mjh.nz/Plex/es.m3u8"
+    val latamM3uUrl = "https://iptv-org.github.io/iptv/languages/spa.m3u"
 
     val defaultList = remember {
         listOf(
@@ -115,10 +118,19 @@ fun TvLibrePlusApp() {
     var catalog by remember { mutableStateOf(defaultList) }
     var currentMedia by remember { mutableStateOf(defaultList.first()) }
 
-    suspend fun loadAllSources(includeLatam: Boolean = false) {
-        statusMsg = "Sincronizando señales..."
+    suspend fun loadAllFastSources(includeFullLatam: Boolean = false) {
+        statusMsg = "Importando Perú, Pluto TV y Plex..."
         withContext(Dispatchers.IO) {
             val combined = mutableListOf<MediaEntry>()
+            val sources = mutableListOf(
+                Triple(peruM3uUrl, "Perú Abierta", "PERÚ"),
+                Triple(plutoEsUrl, "Pluto TV", "PLUTO"),
+                Triple(plexEsUrl, "Plex TV", "PLEX")
+            )
+            if (includeFullLatam) {
+                sources.add(Triple(latamM3uUrl, "Latinoamérica", "LATAM"))
+            }
+
             try {
                 val arr = JSONArray(URL(remoteJsonUrl).readText())
                 for (i in 0 until arr.length()) {
@@ -127,15 +139,11 @@ fun TvLibrePlusApp() {
                 }
             } catch (_: Exception) { }
 
-            try {
-                val peRaw = URL(peruM3uUrl).readText()
-                combined.addAll(parseM3uContent(peRaw, "Perú M3U"))
-            } catch (_: Exception) { }
-
-            if (includeLatam) {
+            for ((url, tag, badge) in sources) {
                 try {
-                    val spaRaw = URL(spanishM3uUrl).readText()
-                    combined.addAll(parseM3uContent(spaRaw, "Latinoamérica").take(150))
+                    val raw = URL(url).readText()
+                    val parsed = parseM3uContent(raw, tag, badge)
+                    combined.addAll(if (badge == "LATAM") parsed.take(200) else parsed)
                 } catch (_: Exception) { }
             }
 
@@ -143,31 +151,23 @@ fun TvLibrePlusApp() {
             if (distinctList.isNotEmpty()) {
                 withContext(Dispatchers.Main) {
                     catalog = distinctList
-                    statusMsg = "${distinctList.size} canales y películas"
+                    statusMsg = "${distinctList.size} canales FAST y películas"
                 }
             } else {
-                withContext(Dispatchers.Main) { statusMsg = "Modo local" }
+                withContext(Dispatchers.Main) { statusMsg = "Modo local activo" }
             }
         }
     }
 
-    LaunchedEffect(Unit) { loadAllSources(includeLatam = false) }
+    LaunchedEffect(Unit) { loadAllFastSources(includeFullLatam = false) }
 
     val exoPlayer = remember {
-        val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
-            override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
-            override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
-            override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
-        })
-        val sslContext = javax.net.ssl.SSLContext.getInstance("TLS").apply { init(null, trustAllCerts, java.security.SecureRandom()) }
-        val okHttpClient = OkHttpClient.Builder().protocols(listOf(okhttp3.Protocol.HTTP_1_1))
-            .protocols(listOf(okhttp3.Protocol.HTTP_1_1))
-            .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as javax.net.ssl.X509TrustManager)
-            .hostnameVerifier { _, _ -> true }
+        val okHttpClient = OkHttpClient.Builder()
+            .protocols(listOf(Protocol.HTTP_1_1))
             .followRedirects(true)
             .followSslRedirects(true)
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(10, TimeUnit.SECONDS)
+            .connectTimeout(12, TimeUnit.SECONDS)
+            .readTimeout(12, TimeUnit.SECONDS)
             .build()
 
         val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
@@ -203,8 +203,16 @@ fun TvLibrePlusApp() {
 
     DisposableEffect(Unit) { onDispose { exoPlayer.release() } }
 
-    val subs = if (selectedTab == "TV") listOf("Todos", "Perú", "Latinoamérica", "Noticias", "Deportes", "Música", "Cultura") else listOf("Todos", "Terror", "Comedia", "Acción", "Ciencia Ficción", "Animación")
-    val filtered = catalog.filter { it.type == selectedTab && (selectedSub == "Todos" || it.category.contains(selectedSub, true)) && (it.title.contains(searchQuery, true) || it.category.contains(searchQuery, true)) }
+    val subs = if (selectedTab == "TV") {
+        listOf("Todos", "Perú", "Pluto TV", "Plex TV", "Latinoamérica", "Cine", "Deportes", "Noticias", "Anime")
+    } else {
+        listOf("Todos", "Terror", "Comedia", "Acción", "Ciencia Ficción", "Animación")
+    }
+    val filtered = catalog.filter {
+        it.type == selectedTab &&
+        (selectedSub == "Todos" || it.category.contains(selectedSub, true) || it.title.contains(selectedSub, true)) &&
+        (it.title.contains(searchQuery, true) || it.category.contains(searchQuery, true))
+    }
 
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0F172A), BgDeepNavy))).then(if (!isLandscape) Modifier.statusBarsPadding().navigationBarsPadding() else Modifier)) {
         if (!isLandscape) {
@@ -213,15 +221,16 @@ fun TvLibrePlusApp() {
                     Icon(Icons.Default.LiveTv, null, tint = Color.White, modifier = Modifier.size(26.dp))
                     Spacer(Modifier.width(10.dp))
                     Column {
-                        Text("TV LIBRE PLUS", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp); Text("Creado por César Ayal", color = Color(0xFF67E8F9), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("TV LIBRE PLUS", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                        Text("Creado por César Ayal", color = Color(0xFF67E8F9), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         Text(statusMsg, color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    TextButton(onClick = { scope.launch { loadAllSources(includeLatam = true) } }, colors = ButtonDefaults.textButtonColors(containerColor = Color.White.copy(alpha = 0.2f)), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
+                    TextButton(onClick = { scope.launch { loadAllFastSources(includeFullLatam = true) } }, colors = ButtonDefaults.textButtonColors(containerColor = Color.White.copy(alpha = 0.2f)), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
                         Text("+ Latam", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
-                    IconButton(onClick = { scope.launch { loadAllSources(includeLatam = false) } }, modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.2f)).size(34.dp)) {
+                    IconButton(onClick = { scope.launch { loadAllFastSources(includeFullLatam = false) } }, modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.2f)).size(34.dp)) {
                         Icon(Icons.Default.Refresh, null, tint = Color.White, modifier = Modifier.size(18.dp))
                     }
                 }
@@ -247,7 +256,7 @@ fun TvLibrePlusApp() {
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(onClick = { selectedTab = "TV"; selectedSub = "Todos" }, colors = ButtonDefaults.buttonColors(containerColor = if (selectedTab == "TV") AccentCyan else CardDarkBlue, contentColor = if (selectedTab == "TV") Color.Black else Color.White), shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.LiveTv, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("TV en Vivo", fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.LiveTv, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("TV y FAST", fontWeight = FontWeight.Bold)
                 }
                 Button(onClick = { selectedTab = "VOD"; selectedSub = "Todos" }, colors = ButtonDefaults.buttonColors(containerColor = if (selectedTab == "VOD") AccentOrange else CardDarkBlue, contentColor = Color.White), shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.Movie, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Películas Free", fontWeight = FontWeight.Bold)
@@ -256,7 +265,7 @@ fun TvLibrePlusApp() {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 subs.forEach { f -> FilterChip(selected = selectedSub == f, onClick = { selectedSub = f }, label = { Text(f) }) }
             }
-            OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, placeholder = { Text("Buscar canal, país o película...") }, singleLine = true, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
+            OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, placeholder = { Text("Buscar canal, Pluto, Plex, cine...") }, singleLine = true, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp))
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 itemsIndexed(filtered) { idx, item ->
                     val isPlaying = item == currentMedia
