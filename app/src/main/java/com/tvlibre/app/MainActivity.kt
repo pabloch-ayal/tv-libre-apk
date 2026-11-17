@@ -32,7 +32,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.common.MimeTypes
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
@@ -162,15 +163,10 @@ fun TvLibrePlusApp() {
     LaunchedEffect(Unit) { loadAllFastSources(includeFullLatam = false) }
 
     val exoPlayer = remember {
-        val okHttpClient = OkHttpClient.Builder()
-            .protocols(listOf(Protocol.HTTP_1_1))
-            .followRedirects(true)
-            .followSslRedirects(true)
-            .connectTimeout(12, TimeUnit.SECONDS)
-            .readTimeout(12, TimeUnit.SECONDS)
-            .build()
-
-        val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
+        val dataSourceFactory = DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(true)
+            .setConnectTimeoutMs(10000)
+            .setReadTimeoutMs(10000)
             .setUserAgent("Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
 
         ExoPlayer.Builder(context)
@@ -196,7 +192,13 @@ fun TvLibrePlusApp() {
 
     LaunchedEffect(currentMedia) {
         playerStatus = "Conectando transmisión..."
-        exoPlayer.setMediaItem(MediaItem.fromUri(currentMedia.streamUrl))
+        val builder = MediaItem.Builder().setUri(currentMedia.streamUrl)
+        if (currentMedia.type == "TV" || currentMedia.streamUrl.contains("m3u8", true)) {
+            builder.setMimeType(MimeTypes.APPLICATION_M3U8)
+        }
+        exoPlayer.stop()
+        exoPlayer.clearMediaItems()
+        exoPlayer.setMediaItem(builder.build())
         exoPlayer.prepare()
         exoPlayer.playWhenReady = true
     }
