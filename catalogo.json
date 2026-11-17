@@ -35,13 +35,6 @@
     "streamUrl": "https://live-evg8.tv360.bitel.com.pe/bitel/agroSRT/playlist.m3u8"
   },
   {
-    "title": "Amazonica TV (720p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://live-evg8.tv360.bitel.com.pe/bitel/amazonicatvSRT/playlist.m3u8"
-  },
-  {
     "title": "America Internacional (720p)",
     "category": "Perú • Verificado",
     "type": "TV",
@@ -75,13 +68,6 @@
     "type": "TV",
     "badge": "VIVO",
     "streamUrl": "https://video2.lhdserver.es/asiritv/live.m3u8"
-  },
-  {
-    "title": "Atlantis Radio TV (720p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://live-evg8.tv360.bitel.com.pe/bitel/atlantisSRT/playlist.m3u8"
   },
   {
     "title": "ATV (Peru) (1080p)",
@@ -203,13 +189,6 @@
     "streamUrl": "https://play.agenciastreaming.com:8081/tvwanka/tracks-v1/index.fmp4.m3u8"
   },
   {
-    "title": "Canal 25 Ayacucho (720p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://live-evg10.tv360.bitel.com.pe/bitel/canal25ayacucho/playlist.m3u8"
-  },
-  {
     "title": "CANAL M Television (720p)",
     "category": "Perú • Verificado",
     "type": "TV",
@@ -217,25 +196,11 @@
     "streamUrl": "https://live-evg10.tv360.bitel.com.pe/bitel/anqaratv/playlist.m3u8"
   },
   {
-    "title": "Canal Mas TV (720p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://live-evg11.tv360.bitel.com.pe/bitel/mastvSRT/playlist.m3u8"
-  },
-  {
     "title": "Casma TV (720p)",
     "category": "Perú • Verificado",
     "type": "TV",
     "badge": "VIVO",
     "streamUrl": "https://live-evg7.tv360.bitel.com.pe/bitel/casmatvSRT-TRA/playlist.m3u8"
-  },
-  {
-    "title": "Charapa TV (720p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://live-evg10.tv360.bitel.com.pe/bitel/charapatvSRT/playlist.m3u8"
   },
   {
     "title": "Chikitoonz (1080p)",
@@ -278,13 +243,6 @@
     "type": "TV",
     "badge": "VIVO",
     "streamUrl": "https://live.obslivestream.com/crtvmux/index.m3u8"
-  },
-  {
-    "title": "Cultura 24 (720p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://www.opencaster.com/resources/hls_stream/cultura24.m3u8"
   },
   {
     "title": "CVN TV",
@@ -420,13 +378,6 @@
     "streamUrl": "http://190.93.224.42/LA-TELE/index.m3u8"
   },
   {
-    "title": "La Tremenda TV (1080p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://iptv.latremenda.pe/LaTremendaTv/tracks-v1a1/mono.m3u8"
-  },
-  {
     "title": "Latina (1080p)",
     "category": "Perú • Verificado",
     "type": "TV",
@@ -476,13 +427,6 @@
     "streamUrl": "https://live-evg5.tv360.bitel.com.pe/bitel/mediatv/playlist.m3u8"
   },
   {
-    "title": "Metropolitana del Cuzco",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://video1.earthcam.com/myearthcam/075ff02f78c35af55564cf3af3b3f750.flv/playlist.m3u8"
-  },
-  {
     "title": "Miel TV (720p)",
     "category": "Perú • Verificado",
     "type": "TV",
@@ -495,13 +439,6 @@
     "type": "TV",
     "badge": "VIVO",
     "streamUrl": "https://www.milenial.news/salida/milenial.m3u8"
-  },
-  {
-    "title": "Monterrico TV",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://h.jcp.live.opencaster.com/play_src/index.m3u8"
   },
   {
     "title": "Nativa (720p)",
@@ -651,13 +588,6 @@
     "streamUrl": "https://videoserver.tmcreativos.com:19360/raditropical/raditropical.m3u8"
   },
   {
-    "title": "Radio Uno Tacna (720p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://live-evg7.tv360.bitel.com.pe/bitel/radiounotv/playlist.m3u8"
-  },
-  {
     "title": "RadioTV Oriente (720p)",
     "category": "Perú • Verificado",
     "type": "TV",
@@ -700,13 +630,6 @@
     "streamUrl": "https://live-evg11.tv360.bitel.com.pe/bitel/selvaticaSRT/playlist.m3u8"
   },
   {
-    "title": "RTP (Peru) (720p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://live-evg7.tv360.bitel.com.pe/bitel/rtp/playlist.m3u8"
-  },
-  {
     "title": "RumbaMix TV (720p)",
     "category": "Perú • Verificado",
     "type": "TV",
@@ -733,13 +656,6 @@
     "type": "TV",
     "badge": "VIVO",
     "streamUrl": "https://video2.lhdserver.es/siscomtv/live.m3u8"
-  },
-  {
-    "title": "Solar Television (720p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://live-evg11.tv360.bitel.com.pe/bitel/solartvSRT/playlist.m3u8"
   },
   {
     "title": "SolTV (Peru) (720p)",
@@ -840,13 +756,6 @@
     "streamUrl": "http://38.87.224.20:2220/play/a02b/index.m3u8"
   },
   {
-    "title": "Top TV (Peru) (240p) [Not 24/7]",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://tvdatta.com:3084/live/toptvaguaytialive.m3u8"
-  },
-  {
     "title": "Trivu (1080p)",
     "category": "Perú • Verificado",
     "type": "TV",
@@ -873,13 +782,6 @@
     "type": "TV",
     "badge": "VIVO",
     "streamUrl": "https://videoserver.tmcreativos.com:19360/tvcosmos/tvcosmos.m3u8"
-  },
-  {
-    "title": "TV MAR (720p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://live-evg11.tv360.bitel.com.pe/bitel/tvmarSRT/playlist.m3u8"
   },
   {
     "title": "TV MAX (720p)",
@@ -922,13 +824,6 @@
     "type": "TV",
     "badge": "VIVO",
     "streamUrl": "https://live-evg11.tv360.bitel.com.pe/bitel/tvchincha/playlist.m3u8"
-  },
-  {
-    "title": "TVenLinea (1080p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://srt.tvdatta.com/tvenlinea/index.m3u8"
   },
   {
     "title": "TVUNO (720p)",
@@ -1029,13 +924,6 @@
     "streamUrl": "https://live-evg11.tv360.bitel.com.pe/bitel/wayratv/playlist.m3u8"
   },
   {
-    "title": "WEST (1080p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://cablered.iptvperu.tv:1936/cablered/west/playlist.m3u8"
-  },
-  {
     "title": "Willax TV (1080p)",
     "category": "Perú • Verificado",
     "type": "TV",
@@ -1097,5 +985,54 @@
     "type": "VOD",
     "badge": "CLÁSICO",
     "streamUrl": "https://archive.org/download/TheGeneral1926/The_General_512kb.mp4"
+  },
+  {
+    "title": "Disney Channel Latin America (1080p)",
+    "category": "Perú • Abierta",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://15.204.246.24:8080/DisneyHD/index.m3u8"
+  },
+  {
+    "title": "FX Latin America (1080p)",
+    "category": "Perú • Abierta",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://15.204.246.24:8080/FXHD/index.m3u8"
+  },
+  {
+    "title": "History Latin America (1080p)",
+    "category": "Perú • Abierta",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://15.204.246.24:8080/HistoryHD/index.m3u8"
+  },
+  {
+    "title": "MTV Latin America (1080p)",
+    "category": "Perú • Abierta",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://15.204.246.24:8080/MTVHD/index.m3u8"
+  },
+  {
+    "title": "Star Channel Latin America (1080p)",
+    "category": "Perú • Abierta",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://15.204.246.24:8080/STARCHANNELHD/index.m3u8"
+  },
+  {
+    "title": "Studio Universal Latin America (1080p)",
+    "category": "Perú • Abierta",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://15.204.246.24:8080/StudioUniversalHD/index.m3u8"
+  },
+  {
+    "title": "Universal TV Latin America (1080p)",
+    "category": "Perú • Abierta",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://15.204.246.24:8080/UniversalHD/index.m3u8"
   }
 ]
