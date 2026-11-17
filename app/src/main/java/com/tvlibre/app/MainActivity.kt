@@ -154,11 +154,20 @@ fun TvLibrePlusApp() {
     LaunchedEffect(Unit) { loadAllSources(includeLatam = false) }
 
     val exoPlayer = remember {
-        val okHttpClient = OkHttpClient.Builder()
+        val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
+            override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
+            override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
+            override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
+        })
+        val sslContext = javax.net.ssl.SSLContext.getInstance("TLS").apply { init(null, trustAllCerts, java.security.SecureRandom()) }
+        val okHttpClient = OkHttpClient.Builder().protocols(listOf(okhttp3.Protocol.HTTP_1_1))
+            .protocols(listOf(okhttp3.Protocol.HTTP_1_1))
+            .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as javax.net.ssl.X509TrustManager)
+            .hostnameVerifier { _, _ -> true }
             .followRedirects(true)
             .followSslRedirects(true)
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
             .build()
 
         val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
@@ -179,7 +188,7 @@ fun TvLibrePlusApp() {
                         }
                     }
                     override fun onPlayerError(error: PlaybackException) {
-                        playerStatus = "Señal caída o bloqueada (${error.errorCodeName})"
+                        playerStatus = "Error: ${error.cause?.localizedMessage ?: error.errorCodeName}"
                     }
                 })
             }
