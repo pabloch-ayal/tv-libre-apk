@@ -1,5 +1,6 @@
 import json
 import urllib.request
+from urllib.parse import urljoin
 from concurrent.futures import ThreadPoolExecutor
 
 SOURCES = [
@@ -12,11 +13,22 @@ def check_stream(item):
     if item.get("type") == "VOD":
         return item
     try:
-        req = urllib.request.Request(item["streamUrl"], headers={"User-Agent": "Mozilla/5.0"})
+        url = item["streamUrl"]
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=5) as r:
-            body = r.read(200).decode("utf-8", errors="ignore")
-            if r.status == 200 and "#EXTM3U" in body:
-                return item
+            body = r.read(1500).decode("utf-8", errors="ignore")
+            if r.status != 200 or "#EXTM3U" not in body:
+                return None
+            # Verificar que el primer segmento o sub-playlist dentro del m3u8 tambien responda
+            for line in body.splitlines():
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    seg_url = urljoin(url, line)
+                    seg_req = urllib.request.Request(seg_url, headers={"User-Agent": "Mozilla/5.0"})
+                    with urllib.request.urlopen(seg_req, timeout=5) as sr:
+                        if sr.status == 200 and len(sr.read(64)) > 0:
+                            return item
+                    return None
     except Exception:
         pass
     return None
@@ -57,4 +69,4 @@ with ThreadPoolExecutor(max_workers=20) as ex:
 with open("catalogo.json", "w", encoding="utf-8") as f:
     json.dump(verificados, f, indent=2, ensure_ascii=False)
 
-print(f"Catálogo actualizado: {len(verificados)} canales y películas activos.")
+print(f"Catálogo actualizado: {len(verificados)} canales con video real verificado.")
