@@ -76,11 +76,30 @@ fun classifyGenre(title: String, rawGroup: String): String {
 }
 
 fun downloadTextWithAgent(urlStr: String): String {
-    val conn = URL(urlStr).openConnection() as HttpURLConnection
-    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-    conn.connectTimeout = 10000
-    conn.readTimeout = 10000
-    return conn.inputStream.bufferedReader().use { it.readText() }
+    var currentUrl = urlStr.trim()
+    repeat(6) {
+        val conn = URL(currentUrl).openConnection() as HttpURLConnection
+        conn.instanceFollowRedirects = false
+        conn.setRequestProperty("User-Agent", "VLC/3.0.18 LibVLC/3.0.18")
+        conn.setRequestProperty("Accept", "*/*")
+        conn.setRequestProperty("Accept-Encoding", "gzip, identity")
+        conn.connectTimeout = 15000
+        conn.readTimeout = 15000
+        val status = conn.responseCode
+        if (status in 301..308) {
+            val loc = conn.getHeaderField("Location") ?: return ""
+            currentUrl = URL(URL(currentUrl), loc).toString()
+            conn.disconnect()
+        } else {
+            val stream = if ("gzip".equals(conn.contentEncoding, ignoreCase = true)) {
+                java.util.zip.GZIPInputStream(conn.inputStream)
+            } else {
+                conn.inputStream
+            }
+            return stream.bufferedReader(Charsets.UTF_8).use { it.readText() }.removePrefix("\uFEFF")
+        }
+    }
+    return ""
 }
 
 fun parseM3uContent(raw: String, originTag: String, badgeTag: String): List<MediaEntry> {
@@ -88,17 +107,26 @@ fun parseM3uContent(raw: String, originTag: String, badgeTag: String): List<Medi
     val lines = raw.lines()
     var currentTitle = ""
     var currentGroup = ""
+    var autoIndex = 1
     for (line in lines) {
-        val trimmed = line.trim()
-        if (trimmed.startsWith("#EXTINF:")) {
-            val groupMatch = Regex("""group-title="([^"]*)"""").find(trimmed)
-            currentGroup = groupMatch?.groupValues?.getOrNull(1) ?: ""
-            currentTitle = trimmed.substringAfterLast(",").trim()
-        } else if (trimmed.startsWith("http") && currentTitle.isNotEmpty()) {
-            val genre = classifyGenre(currentTitle, currentGroup)
+        val trimmed = line.trim().removePrefix("\uFEFF")
+        if (trimmed.isEmpty()) continue
+        if (trimmed.startsWith("#EXTINF:", ignoreCase = true)) {
+            val groupMatch = Regex("""group-title="([^"]*)"""", RegexOption.IGNORE_CASE).find(trimmed)
+            currentGroup = groupMatch?.groupValues?.getOrNull(1)?.trim() ?: ""
+            val afterComma = if ("," in trimmed) trimmed.substringAfterLast(",").trim() else ""
+            val tvgName = Regex("""tvg-name="([^"]*)"""", RegexOption.IGNORE_CASE).find(trimmed)?.groupValues?.getOrNull(1)?.trim() ?: ""
+            currentTitle = afterComma.ifEmpty { tvgName }
+        } else if (trimmed.startsWith("#EXTGRP:", ignoreCase = true)) {
+            currentGroup = trimmed.substringAfter(":").trim()
+        } else if (trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true)) {
+            val titleToUse = currentTitle.ifEmpty { "Canal $autoIndex ($originTag)" }
+            autoIndex++
+            val groupLabel = if (currentGroup.isNotEmpty()) "$currentGroup • $originTag" else "${classifyGenre(titleToUse, "")} • $originTag"
             val isVod = listOf(".mp4", ".mkv", ".avi", "/movie/", "/series/").any { trimmed.contains(it, true) }
-            result.add(MediaEntry(currentTitle, "$genre • $originTag", if (isVod) "VOD" else "TV", badgeTag, trimmed))
+            result.add(MediaEntry(titleToUse, groupLabel, if (isVod) "VOD" else "TV", badgeTag, trimmed))
             currentTitle = ""
+            currentGroup = ""
         }
     }
     return result
@@ -108,6 +136,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContent {
             MaterialTheme(colorScheme = darkColorScheme(background = BgDeepNavy, surface = CardDarkBlue, primary = AccentCyan)) {
                 TvLibrePlusApp()
@@ -168,12 +197,18 @@ fun TvLibrePlusApp() {
         statusMsg = "Sincronizando listas..."
         withContext(Dispatchers.IO) {
             val combined = mutableListOf<MediaEntry>()
+            var customCount = 0
+            var customErr = ""
 
             extraUrls.forEachIndexed { idx, u ->
                 try {
                     val raw = downloadTextWithAgent(u)
-                    combined.addAll(parseM3uContent(raw, "Mi Lista ${idx + 1}", "PRIVADA"))
-                } catch (_: Exception) { }
+                    val parsed = parseM3uContent(raw, "Mi Lista ${idx + 1}", "PRIVADA")
+                    customCount += parsed.size
+                    combined.addAll(parsed)
+                } catch (e: Exception) {
+                    customErr = e.localizedMessage ?: "Error de conexión"
+                }
             }
 
             try {
@@ -184,22 +219,14 @@ fun TvLibrePlusApp() {
                     val rawCat = o.optString("category", "General")
                     val type = o.optString("type", "TV")
                     val genre = classifyGenre(title, rawCat)
-                    combined.add(MediaEntry(title, "$genre • $rawCat", type, o.optString("badge", "HD"), o.getString("streamUrl")))
+                    combined.add(MediaEntry(title, "$genre • $rawCat", type, o.optString("badge", "VIVO"), o.getString("streamUrl")))
                 }
             } catch (_: Exception) { }
 
-            val sources = mutableListOf(
-                Triple(peruM3uUrl, "Perú", "PERÚ"),
-                Triple(plutoEsUrl, "Pluto TV", "PLUTO"),
-                Triple(plexEsUrl, "Plex TV", "PLEX")
-            )
-            if (includeFullLatam) sources.add(Triple(latamM3uUrl, "Latinoamérica", "LATAM"))
-
-            for ((url, tag, badge) in sources) {
+            if (includeFullLatam) {
                 try {
-                    val raw = downloadTextWithAgent(url)
-                    val parsed = parseM3uContent(raw, tag, badge)
-                    combined.addAll(if (badge == "LATAM") parsed.take(200) else parsed)
+                    val raw = downloadTextWithAgent(latamM3uUrl)
+                    combined.addAll(parseM3uContent(raw, "Latinoamérica", "LATAM").take(150))
                 } catch (_: Exception) { }
             }
 
@@ -209,7 +236,11 @@ fun TvLibrePlusApp() {
             val distinctList = combined.distinctBy { it.streamUrl }
             withContext(Dispatchers.Main) {
                 catalog = distinctList
-                statusMsg = "${distinctList.size} canales y películas"
+                statusMsg = when {
+                    customCount > 0 -> "${distinctList.size} canales ($customCount en Mi Lista)"
+                    customErr.isNotEmpty() -> "Error M3U: $customErr"
+                    else -> "${distinctList.size} canales verificados"
+                }
             }
         }
     }
@@ -365,7 +396,7 @@ fun TvLibrePlusApp() {
     }
     val filtered = catalog.filter {
         it.type == selectedTab &&
-        (selectedSub == "Todos" || it.category.contains(selectedSub, true) || it.title.contains(selectedSub, true)) &&
+        (selectedSub == "Todos" || (selectedSub == "Mi Lista" && it.badge == "PRIVADA") || it.category.contains(selectedSub, true) || it.title.contains(selectedSub, true)) &&
         (it.title.contains(searchQuery, true) || it.category.contains(searchQuery, true))
     }
 
