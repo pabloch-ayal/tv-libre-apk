@@ -389,13 +389,21 @@ fun TvLibrePlusApp() {
         )
     }
 
-    val subs = if (selectedTab == "TV") {
-        listOf("Todos", "Mi Lista", "Noticias", "Deportes", "Películas", "Series", "Documentales", "Perú", "Pluto TV", "Plex TV")
-    } else {
-        listOf("Todos", "Mi Lista", "Películas", "Series", "Terror", "Comedia", "Ciencia Ficción")
+    val baseItems = remember(catalog, selectedTab) { catalog.filter { it.type == selectedTab } }
+    val subs = remember(baseItems) {
+        val list = mutableListOf("Todos")
+        if (baseItems.any { it.badge == "PRIVADA" }) list.add("Mi Lista")
+        val candidates = listOf("Perú", "Noticias", "Deportes", "Películas", "Series", "Documentales", "Infantil", "Música", "Variedades", "Pluto TV", "Plex TV", "Vix", "Latinoamérica")
+        for (cat in candidates) {
+            if (baseItems.any { it.category.contains(cat, true) || it.title.contains(cat, true) }) {
+                list.add(cat)
+            }
+        }
+        list
     }
-    val filtered = catalog.filter {
-        it.type == selectedTab &&
+    if (selectedSub !in subs) selectedSub = "Todos"
+
+    val filtered = baseItems.filter {
         (selectedSub == "Todos" || (selectedSub == "Mi Lista" && it.badge == "PRIVADA") || it.category.contains(selectedSub, true) || it.title.contains(selectedSub, true)) &&
         (it.title.contains(searchQuery, true) || it.category.contains(searchQuery, true))
     }
