@@ -4,39 +4,49 @@ from urllib.parse import urljoin
 from concurrent.futures import ThreadPoolExecutor
 
 SOURCES = [
-    ("https://iptv-org.github.io/iptv/countries/pe.m3u", "Perú • Abierta", "PERÚ"),
-    ("https://i.mjh.nz/PlutoTV/es.m3u8", "Pluto TV • FAST", "PLUTO"),
-    ("https://i.mjh.nz/Plex/es.m3u8", "Plex TV • FAST", "PLEX")
+    ("https://iptv-org.github.io/iptv/countries/pe.m3u", "Perú • Verificado", "PERÚ"),
+    ("https://i.mjh.nz/PlutoTV/es.m3u8", "Pluto TV • Verificado", "PLUTO"),
+    ("https://i.mjh.nz/Plex/es.m3u8", "Plex TV • Verificado", "PLEX")
 ]
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Referer": "https://www.google.com/"
+}
+
+def verify_url_deep(url, depth=0):
+    if depth > 2:
+        return False
+    try:
+        req = urllib.request.Request(url, headers=HEADERS)
+        with urllib.request.urlopen(req, timeout=6) as r:
+            if r.status != 200:
+                return False
+            data = r.read(4096)
+            if not data:
+                return False
+            text = data.decode("utf-8", errors="ignore")
+            if "#EXTM3U" in text:
+                for line in text.splitlines():
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        next_url = urljoin(r.geturl(), line)
+                        return verify_url_deep(next_url, depth + 1)
+                return False
+            return len(data) >= 512
+    except Exception:
+        return False
 
 def check_stream(item):
     if item.get("type") == "VOD":
         return item
-    try:
-        url = item["streamUrl"]
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=5) as r:
-            body = r.read(1500).decode("utf-8", errors="ignore")
-            if r.status != 200 or "#EXTM3U" not in body:
-                return None
-            # Verificar que el primer segmento o sub-playlist dentro del m3u8 tambien responda
-            for line in body.splitlines():
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    seg_url = urljoin(url, line)
-                    seg_req = urllib.request.Request(seg_url, headers={"User-Agent": "Mozilla/5.0"})
-                    with urllib.request.urlopen(seg_req, timeout=5) as sr:
-                        if sr.status == 200 and len(sr.read(64)) > 0:
-                            return item
-                    return None
-    except Exception:
-        pass
-    return None
+    return item if verify_url_deep(item["streamUrl"]) else None
 
 def fetch_m3u(url, category, badge):
     entries = []
     try:
-        raw = urllib.request.urlopen(url, timeout=12).read().decode("utf-8", errors="ignore").splitlines()
+        req = urllib.request.Request(url, headers=HEADERS)
+        raw = urllib.request.urlopen(req, timeout=12).read().decode("utf-8", errors="ignore").splitlines()
         title = ""
         for line in raw:
             line = line.strip()
@@ -69,4 +79,4 @@ with ThreadPoolExecutor(max_workers=20) as ex:
 with open("catalogo.json", "w", encoding="utf-8") as f:
     json.dump(verificados, f, indent=2, ensure_ascii=False)
 
-print(f"Catálogo actualizado: {len(verificados)} canales con video real verificado.")
+print(f"Catálogo limpio: {len(verificados)} canales con video real verificado.")
