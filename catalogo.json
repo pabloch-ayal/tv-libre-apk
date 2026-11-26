@@ -56,20 +56,6 @@
     "streamUrl": "https://alfa.betheltv.tv/srt/3_abr/playlist.m3u8"
   },
   {
-    "title": "Cadena TV (720p) [Not 24/7]",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://tv.bitstreaming.net:3789/live/cdntvlive.m3u8"
-  },
-  {
-    "title": "Canal 21 Huancayo (720p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://play.agenciastreaming.com:8081/tvwanka/tracks-v1/index.fmp4.m3u8"
-  },
-  {
     "title": "Cinecanal Pacific (1080p)",
     "category": "Perú • Verificado",
     "type": "TV",
@@ -187,13 +173,6 @@
     "type": "TV",
     "badge": "VIVO",
     "streamUrl": "https://videoserver.tmcreativos.com:19360/radiomaster/radiomaster.m3u8"
-  },
-  {
-    "title": "Radio Onda Digital (1080p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "VIVO",
-    "streamUrl": "https://live.ondadigitaltv.com/RADIOODTV/index.m3u8"
   },
   {
     "title": "RadioTV Oriente (720p)",
@@ -511,13 +490,6 @@
     "streamUrl": "http://190.93.224.42/EXITOSA/index.m3u8"
   },
   {
-    "title": "Genios TV (1080p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "PERÚ",
-    "streamUrl": "https://sc3.wasidata.com/Genios2_1902/video.m3u8"
-  },
-  {
     "title": "Intuitiva TV (720p)",
     "category": "Perú • Verificado",
     "type": "TV",
@@ -623,20 +595,6 @@
     "streamUrl": "https://tv2.bitstreaming.net:3539/live/deltanetlive.m3u8"
   },
   {
-    "title": "Disney Jr. Latin America South (1080p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "PERÚ",
-    "streamUrl": "http://45.185.163.75:8000/play/a016/index.m3u8"
-  },
-  {
-    "title": "La Tremenda TV (1080p)",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "PERÚ",
-    "streamUrl": "https://iptv.latremenda.pe/LaTremendaTv/tracks-v1a1/mono.m3u8"
-  },
-  {
     "title": "Radio Tropical (480p) [Not 24/7]",
     "category": "Perú • Verificado",
     "type": "TV",
@@ -693,13 +651,6 @@
     "streamUrl": "http://45.70.201.81:8000/play/a00p/index.m3u8"
   },
   {
-    "title": "Kora TV",
-    "category": "Perú • Verificado",
-    "type": "TV",
-    "badge": "PERÚ",
-    "streamUrl": "https://s3.tvdatta.com:3700/live/jjrtvlive.m3u8"
-  },
-  {
     "title": "Lifetime Latin America (1080p)",
     "category": "Perú • Verificado",
     "type": "TV",
@@ -712,5 +663,152 @@
     "type": "TV",
     "badge": "PERÚ",
     "streamUrl": "https://tv.ondadigital.pe/ondadigital/index.m3u8"
+  },
+  {
+    "title": "Comedy Central Latin America (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://190.93.224.42/COMEDY-CENTRAL/index.m3u8"
+  },
+  {
+    "title": "Discovery Channel Latin America (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://45.171.64.30:6060/play/a032/index.m3u8"
+  },
+  {
+    "title": "Disney Channel Latin America (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://15.204.246.24:8080/DisneyHD/index.m3u8"
+  },
+  {
+    "title": "DSports 2",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://45.134.141.161:2200/ARG/DTV_SP2/tracks-v1a1/mono.m3u8"
+  },
+  {
+    "title": "FX Latin America (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://15.204.246.24:8080/FXHD/index.m3u8"
+  },
+  {
+    "title": "History Latin America (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://15.204.246.24:8080/HistoryHD/index.m3u8"
+  },
+  {
+    "title": "Justicia TV (Peru) (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://190.93.224.42/JUSTICIA-TV/index.m3u8"
+  },
+  {
+    "title": "L1 Max (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://190.93.224.42/LIGA-1-MAX/index.m3u8"
+  },
+  {
+    "title": "La Tele (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://190.93.224.42/LA-TELE/index.m3u8"
+  },
+  {
+    "title": "Lider TV (Peru) (720p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "https://chankillo.agenciastreaming.com/lidertv/index.m3u8"
+  },
+  {
+    "title": "Millenium 109 FM",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "https://videoserver.tmcreativos.com:19360/nqvnhujhrx/nqvnhujhrx.m3u8"
+  },
+  {
+    "title": "MTV Latin America (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://15.204.246.24:8080/MTVHD/index.m3u8"
+  },
+  {
+    "title": "PBO (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://190.93.224.42/PBO/index.m3u8"
+  },
+  {
+    "title": "RPP TV (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://190.93.224.42/RPP/index.m3u8"
+  },
+  {
+    "title": "Star Channel Latin America (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://15.204.246.24:8080/STARCHANNELHD/index.m3u8"
+  },
+  {
+    "title": "Studio Universal Latin America (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://15.204.246.24:8080/StudioUniversalHD/index.m3u8"
+  },
+  {
+    "title": "Sullana TV (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "https://mundial.cpustream.com:8081/sullanatv/video.m3u8"
+  },
+  {
+    "title": "Trivu (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://190.93.224.42/TRIVU-TV/index.m3u8"
+  },
+  {
+    "title": "TV Cosmos (720p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "https://videoserver.tmcreativos.com:19360/tvcosmos/tvcosmos.m3u8"
+  },
+  {
+    "title": "TV Peru Noticias (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://190.93.224.42/TV-PERU-NOTICIAS/index.m3u8"
+  },
+  {
+    "title": "Universal TV Latin America (1080p)",
+    "category": "Perú • Verificado",
+    "type": "TV",
+    "badge": "PERÚ",
+    "streamUrl": "http://15.204.246.24:8080/UniversalHD/index.m3u8"
   }
 ]
