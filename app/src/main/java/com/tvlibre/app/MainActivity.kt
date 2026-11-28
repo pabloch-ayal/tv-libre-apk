@@ -318,7 +318,6 @@ fun TvLibrePlusApp() {
             .apply {
                 trackSelectionParameters = trackSelectionParameters
                     .buildUpon()
-                    .setExceedRendererCapabilitiesIfNecessary(true)
                     .setMaxVideoSize(1920, 1080)
                     .build()
                 playWhenReady = true
