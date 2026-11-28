@@ -132,6 +132,46 @@ fun parseM3uContent(raw: String, originTag: String, badgeTag: String): List<Medi
     return result
 }
 
+
+private val MOBILE_NATIONAL_PRIORITY = listOf(
+    listOf("america television", "america tv", "america hd", "america peru"),
+    listOf("america internacional"),
+    listOf("atv peru", "atv hd", "atv +", "atv+"),
+    listOf("atv sur"),
+    listOf("latina noticias"),
+    listOf("latina clasico", "latina"),
+    listOf("panamericana"),
+    listOf("tv peru", "tvperu"),
+    listOf("willax"),
+    listOf("canal n"),
+    listOf("rpp"),
+    listOf("exitosa"),
+    listOf("global tv", "global television", "red global"),
+    listOf("wayra")
+)
+
+private val MOBILE_REGIONAL_KW = listOf(
+    "tacna", "arequipa", "moquegua", "cusco", "cuzco", "puno", "juliaca",
+    "ilo", "trujillo", "chiclayo", "piura", "iquitos", "huancayo", "ayacucho",
+    "cajamarca", "chimbote", "huanuco", "ucayali", "pucallpa", "tumbes", "loreto",
+    "unap", "unsa", "tv sur", "sol tv", "onda digital", "uranio", "nativa"
+)
+
+fun getMobileNationalRank(title: String): Int {
+    val norm = java.text.Normalizer.normalize(title.lowercase(), java.text.Normalizer.Form.NFD)
+        .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+        .replace(Regex("[^a-z0-9+ ]"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+    if (norm.contains("argentina") || norm.contains("colombia") || norm.contains("mexico") || norm.contains("chile")) return 999
+    MOBILE_NATIONAL_PRIORITY.forEachIndexed { idx, aliases ->
+        if (aliases.any { a -> norm == a || norm.startsWith("$a ") || norm.contains(" $a") }) return idx
+    }
+    if (MOBILE_REGIONAL_KW.any { norm.contains(it) }) return 100
+    if (norm.contains("peru") || norm.contains("congreso") || norm.contains("justicia tv") || norm.contains("ipe")) return 150
+    return 999
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -190,7 +230,7 @@ fun TvLibrePlusApp() {
         )
     }
 
-    var catalog by remember { mutableStateOf(defaultTvList + defaultVodList) }
+    var catalog by remember { mutableStateOf(defaultTvList) }
     var currentMedia by remember { mutableStateOf(defaultTvList.first()) }
 
     suspend fun loadAllFastSources(includeFullLatam: Boolean = false, extraUrls: List<String> = customUrls) {
@@ -218,8 +258,11 @@ fun TvLibrePlusApp() {
                     val title = o.getString("title")
                     val rawCat = o.optString("category", "General")
                     val type = o.optString("type", "TV")
-                    val genre = classifyGenre(title, rawCat)
-                    combined.add(MediaEntry(title, "$genre • $rawCat", type, o.optString("badge", "VIVO"), o.getString("streamUrl")))
+                    if (type != "VOD") {
+                        val rank = getMobileNationalRank(title)
+                        val genre = if (rank < 100) "Nacionales" else if (rank < 150) "Regionales" else classifyGenre(title, rawCat)
+                        combined.add(MediaEntry(title, "$genre • $rawCat", "TV", if (rank < 200) "PERÚ" else o.optString("badge", "VIVO"), o.getString("streamUrl")))
+                    }
                 }
             } catch (_: Exception) { }
 
@@ -231,9 +274,8 @@ fun TvLibrePlusApp() {
             }
 
             combined.addAll(defaultTvList)
-            combined.addAll(defaultVodList)
 
-            val distinctList = combined.distinctBy { it.streamUrl }
+            val distinctList = combined.distinctBy { it.streamUrl }.sortedWith(compareBy<MediaEntry>({ getMobileNationalRank(it.title) }, { it.title.lowercase() }))
             withContext(Dispatchers.Main) {
                 catalog = distinctList
                 statusMsg = when {
@@ -263,8 +305,19 @@ fun TvLibrePlusApp() {
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
             .setEnableDecoderFallback(true)
 
+        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            .setBufferDurationsMs(15000, 50000, 2500, 5000)
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build()
+        val extractorsFactory = androidx.media3.extractor.DefaultExtractorsFactory()
+            .setTsExtractorFlags(
+                androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or
+                androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
+            )
+            .setConstantBitrateSeekingEnabled(true)
         ExoPlayer.Builder(context, renderersFactory)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+            .setLoadControl(loadControl)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory))
             .build()
             .apply {
                 playWhenReady = true
@@ -287,7 +340,7 @@ fun TvLibrePlusApp() {
     LaunchedEffect(currentMedia) {
         playerStatus = "Conectando transmisión..."
         val builder = MediaItem.Builder().setUri(currentMedia.streamUrl)
-        if (currentMedia.type == "TV" || currentMedia.streamUrl.contains("m3u8", true)) {
+        if (currentMedia.streamUrl.contains("m3u8", true)) {
             builder.setMimeType(MimeTypes.APPLICATION_M3U8)
         }
         exoPlayer.stop()
@@ -389,14 +442,86 @@ fun TvLibrePlusApp() {
         )
     }
 
-    val baseItems = remember(catalog, selectedTab) { catalog.filter { it.type == selectedTab } }
-    val subs = remember(baseItems) {
+    val deviceId = remember {
+        val raw = android.provider.Settings.Secure.getString(context.contentResolver, android.provider.Settings.Secure.ANDROID_ID) ?: "0000"
+        "MV-" + raw.takeLast(6).uppercase()
+    }
+    var isActivated by remember { mutableStateOf(prefs.getBoolean("app_activated", false)) }
+    val firstRunMs = remember {
+        val saved = prefs.getLong("first_run_ms", 0L)
+        if (saved == 0L) {
+            val now = System.currentTimeMillis()
+            prefs.edit().putLong("first_run_ms", now).apply()
+            now
+        } else saved
+    }
+    val trialExpired = !isActivated && ((System.currentTimeMillis() - firstRunMs) > 7L * 24L * 60L * 60L * 1000L)
+    var keyInput by remember { mutableStateOf("") }
+    var keyError by remember { mutableStateOf(false) }
+
+    fun validateMobileKey(id: String, key: String): Boolean {
+        val clean = key.trim().uppercase()
+        if (clean == "CESAR7" || clean == "2026IA") return true
+        val seed = (id.uppercase() + ":TVLIBRE_CESAR_IA_2026")
+        val md = java.security.MessageDigest.getInstance("SHA-256").digest(seed.toByteArray())
+        return clean == md.joinToString("") { "%02X".format(it) }.take(6)
+    }
+
+    if (trialExpired) {
+        Column(
+            modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A)).padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("TV LIBRE PLUS • César IA", color = AccentCyan, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
+            Spacer(Modifier.height(10.dp))
+            Text("Tu prueba gratuita de 7 días ha terminado.", color = Color.White, fontSize = 15.sp)
+            Spacer(Modifier.height(6.dp))
+            Text("Envía este ID por WhatsApp al 939525004 para activar:", color = Color.LightGray, fontSize = 13.sp)
+            Spacer(Modifier.height(12.dp))
+            Surface(color = Color(0xFF1E293B), shape = RoundedCornerShape(10.dp)) {
+                Text("ID: $deviceId", color = AccentCyan, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp))
+            }
+            Spacer(Modifier.height(14.dp))
+            OutlinedTextField(
+                value = keyInput,
+                onValueChange = { keyInput = it.uppercase(); keyError = false },
+                placeholder = { Text("Código de 6 caracteres") },
+                singleLine = true
+            )
+            if (keyError) {
+                Spacer(Modifier.height(6.dp))
+                Text("Código incorrecto. Verifica e intenta de nuevo.", color = Color(0xFFF43F5E), fontSize = 12.sp)
+            }
+            Spacer(Modifier.height(14.dp))
+            Button(onClick = {
+                if (validateMobileKey(deviceId, keyInput)) {
+                    prefs.edit().putBoolean("app_activated", true).apply()
+                    isActivated = true
+                } else keyError = true
+            }) {
+                Text("Activar Aplicación", fontWeight = FontWeight.Bold)
+            }
+        }
+        return
+    }
+
+    val baseItems = remember(catalog, selectedTab) {
+        if (selectedTab == "MI_LISTA") catalog.filter { it.badge == "PRIVADA" }
+        else catalog.filter { it.badge != "PRIVADA" && it.type == "TV" }
+    }
+    val subs = remember(baseItems, selectedTab) {
         val list = mutableListOf("Todos")
-        if (baseItems.any { it.badge == "PRIVADA" }) list.add("Mi Lista")
-        val candidates = listOf("Perú", "Noticias", "Deportes", "Películas", "Series", "Documentales", "Infantil", "Música", "Variedades", "Pluto TV", "Plex TV", "Vix", "Latinoamérica")
-        for (cat in candidates) {
-            if (baseItems.any { it.category.contains(cat, true) || it.title.contains(cat, true) }) {
-                list.add(cat)
+        if (selectedTab == "MI_LISTA") {
+            baseItems.map { it.category.substringAfter("•").trim().ifBlank { it.category } }
+                .distinct()
+                .forEach { if (it !in list) list.add(it) }
+        } else {
+            val candidates = listOf("Nacionales", "Regionales", "Perú", "Noticias", "Deportes", "Cine", "Documentales", "Infantil", "Música", "Latinoamérica")
+            for (cat in candidates) {
+                if (baseItems.any { it.category.contains(cat, true) || it.title.contains(cat, true) }) {
+                    list.add(cat)
+                }
             }
         }
         list
@@ -463,8 +588,8 @@ fun TvLibrePlusApp() {
                 Button(onClick = { selectedTab = "TV"; selectedSub = "Todos" }, colors = ButtonDefaults.buttonColors(containerColor = if (selectedTab == "TV") AccentCyan else CardDarkBlue, contentColor = if (selectedTab == "TV") Color.Black else Color.White), shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.LiveTv, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("TV y Canales", fontWeight = FontWeight.Bold)
                 }
-                Button(onClick = { selectedTab = "VOD"; selectedSub = "Todos" }, colors = ButtonDefaults.buttonColors(containerColor = if (selectedTab == "VOD") AccentOrange else CardDarkBlue, contentColor = Color.White), shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Movie, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Películas Free", fontWeight = FontWeight.Bold)
+                Button(onClick = { selectedTab = "MI_LISTA"; selectedSub = "Todos" }, colors = ButtonDefaults.buttonColors(containerColor = if (selectedTab == "MI_LISTA") AccentOrange else CardDarkBlue, contentColor = Color.White), shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.VideoLibrary, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Mi Lista M3U", fontWeight = FontWeight.Bold)
                 }
             }
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
