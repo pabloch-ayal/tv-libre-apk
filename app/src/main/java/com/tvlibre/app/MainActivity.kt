@@ -290,16 +290,12 @@ fun TvLibrePlusApp() {
     LaunchedEffect(Unit) { loadAllFastSources(includeFullLatam = false) }
 
     val exoPlayer = remember {
-        val headers = mapOf(
-            "Referer" to "https://www.google.com/",
-            "Origin" to "https://www.google.com"
-        )
         val dataSourceFactory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
-            .setConnectTimeoutMs(8000)
-            .setReadTimeoutMs(8000)
-            .setDefaultRequestProperties(headers)
-            .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            .setConnectTimeoutMs(15000)
+            .setReadTimeoutMs(15000)
+            .setKeepPostFor302Redirects(true)
+            .setUserAgent("VLC/3.0.20 LibVLC/3.0.20")
 
         val renderersFactory = DefaultRenderersFactory(context)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
@@ -320,6 +316,12 @@ fun TvLibrePlusApp() {
             .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory))
             .build()
             .apply {
+                trackSelectionParameters = trackSelectionParameters
+                    .buildUpon()
+                    .setExceedVideoConstraintsIfNecessary(true)
+                    .setExceedRendererCapabilitiesIfNecessary(true)
+                    .setMaxVideoSize(1920, 1080)
+                    .build()
                 playWhenReady = true
                 addListener(object : Player.Listener {
                     override fun onPlaybackStateChanged(state: Int) {
